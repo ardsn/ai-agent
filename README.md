@@ -1,25 +1,34 @@
 # 🤖 AI Agent
 
-Um agente de IA para automação de tarefas desenvolvido em Python com gerenciamento moderno de dependências usando **uv**.
+Um agente de IA inteligente para atendimento ao cliente e agendamento de serviços, desenvolvido em Python com LangChain e LangGraph. O agente é capaz de responder dúvidas, consultar disponibilidade e realizar agendamentos de forma automatizada.
 
 ## 📋 Índice
 
 - [Sobre o Projeto](#-sobre-o-projeto)
+- [Funcionalidades](#-funcionalidades)
+- [Arquitetura](#-arquitetura)
 - [Pré-requisitos](#-pré-requisitos)
+- [Configuração](#-configuração)
 - [Instalação](#-instalação)
+- [Uso](#-uso)
 - [Desenvolvimento](#-desenvolvimento)
 - [Comandos Úteis](#-comandos-úteis)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Configuração do Editor](#-configuração-do-editor)
 - [Testes](#-testes)
 - [Qualidade de Código](#-qualidade-de-código)
+- [Troubleshooting](#-troubleshooting)
 - [Contribuição](#-contribuição)
 - [Licença](#-licença)
 
 ## 🚀 Sobre o Projeto
 
-O AI Agent é um projeto Python moderno que utiliza as melhores práticas de desenvolvimento, incluindo:
+O AI Agent é um assistente virtual inteligente que utiliza as mais recentes tecnologias de IA para automatizar o atendimento ao cliente. O projeto utiliza:
 
+- ⚡ **LangChain** para orquestração de LLMs e ferramentas
+- 🧠 **LangGraph** para criação de agentes com memória e estado
+- 🔧 **Google Gemini 2.0 Flash** como modelo de linguagem principal
+- 🗄️ **SQLite** para consultas de banco de dados
 - ⚡ **uv** para gerenciamento ultrarrápido de dependências
 - 🧪 **pytest** para testes unitários com cobertura de código
 - 🎨 **black** para formatação automática de código
@@ -27,10 +36,86 @@ O AI Agent é um projeto Python moderno que utiliza as melhores práticas de des
 - 🔒 **mypy** para verificação de tipos estática
 - 📦 **hatchling** como build backend
 
+## 🎯 Funcionalidades
+
+### Atendimento ao Cliente
+- **Resposta a dúvidas gerais** sobre o estabelecimento
+- **Consulta de informações** usando sistema de recuperação de documentos
+- **Interação natural** em português brasileiro
+
+### Agendamento de Serviços
+- **Consulta de disponibilidade** de dias e horários
+- **Verificação de agenda** em tempo real
+- **Criação de agendamentos** com validação automática
+- **Gestão de clientes** e profissionais
+
+### Recursos Técnicos
+- **Memória persistente** para manter contexto entre conversas
+- **Integração com banco de dados** para consultas SQL
+- **Ferramentas customizáveis** para diferentes funcionalidades
+- **Streaming de respostas** para melhor experiência do usuário
+
+## 🏗️ Arquitetura
+
+O agente utiliza uma arquitetura baseada em **LangGraph** com os seguintes componentes:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User Input    │───▶│  React Agent    │───▶│   LLM (Gemini)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Memory        │◀───│   Tools         │───▶│   Database      │
+│   (Checkpoint)  │    │   - SQL         │    │   (SQLite)      │
+└─────────────────┘    │   - Retrieve    │    └─────────────────┘
+                       │   - Appointment │
+                       └─────────────────┘
+```
+
+### Componentes Principais
+
+- **React Agent**: Orquestra a conversa e decide quais ferramentas usar
+- **LLM (Gemini 2.0 Flash)**: Processa linguagem natural e gera respostas
+- **Tools**: Ferramentas especializadas (SQL, recuperação, agendamento)
+- **Memory**: Mantém contexto entre interações
+- **Database**: Armazena dados de clientes, serviços e agendamentos
+
 ## 🔧 Pré-requisitos
 
 - Python 3.12 ou superior
 - uv (gerenciador de dependências)
+- Chave de API do Google (para Gemini)
+- Banco de dados SQLite configurado
+
+## ⚙️ Configuração
+
+### 1. Configurar API Keys
+
+O projeto requer uma chave de API do Google para usar o modelo Gemini:
+
+```bash
+# Definir variável de ambiente
+export GOOGLE_API_KEY="sua_chave_api_aqui"
+
+# Ou adicionar ao arquivo .env (recomendado)
+echo "GOOGLE_API_KEY=sua_chave_api_aqui" > .env
+```
+
+**⚠️ Importante**: Nunca commite sua chave de API no repositório. Use variáveis de ambiente ou arquivos `.env` (que devem estar no `.gitignore`).
+
+### 2. Configurar Banco de Dados
+
+O agente está configurado para usar um banco SQLite. Você pode:
+
+- Usar o banco existente em `db.sqlite3`
+- Criar um novo banco SQLite
+- Modificar a configuração para usar outro banco de dados
+
+```python
+# Em src/ai_agent/graph.py
+db = SQLDatabase.from_uri("sqlite:///caminho/para/seu/banco.sqlite3")
+```
 
 ## 📦 Instalação
 
@@ -78,6 +163,42 @@ source .venv/bin/activate
 # Ou usar uv shell (recomendado)
 uv shell
 ```
+
+## 🚀 Uso
+
+### Executar o Agente
+
+```bash
+# Executar o agente interativamente
+make run
+# ou
+uv run python -m ai_agent
+
+# Executar diretamente o arquivo graph.py
+uv run python src/ai_agent/graph.py
+```
+
+### Exemplos de Uso
+
+O agente pode responder a perguntas como:
+
+```
+Você: "Quais são os horários disponíveis para hoje?"
+Você: "Gostaria de agendar um corte de cabelo para amanhã às 14h"
+Você: "Quais serviços vocês oferecem?"
+Você: "Preciso cancelar meu agendamento"
+```
+
+### Configuração de Thread
+
+O agente mantém memória entre conversas usando threads. Cada thread tem um ID único:
+
+```python
+# Em src/ai_agent/graph.py
+config = {"configurable": {"thread_id": "abc123"}}
+```
+
+Para diferentes usuários ou sessões, use IDs diferentes.
 
 ## 💻 Desenvolvimento
 
@@ -170,7 +291,8 @@ uv pip show package_name  # Mostrar informações de um pacote
 ai-agent/
 ├── 📁 src/
 │   └── 📁 ai_agent/           # Código fonte principal
-│       └── 📄 __init__.py     # Inicialização do pacote
+│       ├── 📄 __init__.py     # Inicialização do pacote
+│       └── 📄 graph.py        # Agente principal com LangGraph
 ├── 📁 tests/                  # Testes unitários
 │   ├── 📄 __init__.py
 │   └── 📄 test_example.py     # Testes de exemplo
@@ -183,8 +305,16 @@ ai-agent/
 ├── 📄 Makefile              # Comandos de automação
 ├── 📄 README.md             # Documentação do projeto
 ├── 📄 .gitignore            # Arquivos ignorados pelo Git
+├── 📄 db.sqlite3            # Banco de dados SQLite
 └── 📄 .coverage             # Relatório de cobertura de testes
 ```
+
+### Arquivos Principais
+
+- **`src/ai_agent/graph.py`**: Implementação principal do agente com LangGraph
+- **`pyproject.toml`**: Configuração do projeto e dependências
+- **`Makefile`**: Comandos de automação para desenvolvimento
+- **`db.sqlite3`**: Banco de dados com dados de clientes e agendamentos
 
 ## ⚙️ Configuração do Editor
 
@@ -285,6 +415,65 @@ make format      # Corrige formatação
 make lint-fix    # Corrige problemas de linting
 ```
 
+## 🔧 Troubleshooting
+
+### Problemas Comuns
+
+#### 1. Erro de API Key
+```
+Error: Invalid API key or quota exceeded
+```
+**Solução**: Verifique se a variável `GOOGLE_API_KEY` está configurada corretamente.
+
+#### 2. Erro de Dependências
+```
+ModuleNotFoundError: No module named 'langchain'
+```
+**Solução**: Execute `uv sync` para instalar todas as dependências.
+
+#### 3. Erro de Banco de Dados
+```
+OperationalError: no such table
+```
+**Solução**: Verifique se o arquivo `db.sqlite3` existe e tem as tabelas necessárias.
+
+#### 4. Erro de Modelo não Suporta Tools
+```
+ollama._types.ResponseError: model does not support tools
+```
+**Solução**: Use modelos que suportem tools (como Gemini, GPT-4) ou implemente um wrapper manual.
+
+### Logs e Debug
+
+Para debug mais detalhado, você pode:
+
+```python
+# Adicionar logs no código
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Ou usar o modo verbose do agente
+for step in agent_executor.stream(
+    {"messages": [{"role": "user", "content": user_input}]},
+    stream_mode="debug",  # Modo debug
+    config=config,
+):
+    print(step)
+```
+
+### Verificação de Configuração
+
+```bash
+# Verificar se o ambiente está configurado corretamente
+make check
+
+# Verificar dependências instaladas
+uv pip list
+
+# Testar conexão com a API
+uv run python -c "import os; print('API Key:', 'OK' if os.getenv('GOOGLE_API_KEY') else 'MISSING')"
+```
+
 ## 🤝 Contribuição
 
 ### Configuração para Contribuição
@@ -348,15 +537,23 @@ chore: tarefas de manutenção
 - [ ] Testes unitários escritos e passando
 - [ ] Cobertura de código mantida ou melhorada
 - [ ] Documentação atualizada se necessário
+- [ ] API keys não expostas no código
 
 ## 📈 Roadmap
 
-- [ ] Implementar funcionalidades básicas do agente
-- [ ] Adicionar integração com APIs de IA
-- [ ] Criar interface CLI
-- [ ] Adicionar suporte a plugins
-- [ ] Implementar dashboard web
-- [ ] Adicionar documentação com Sphinx
+- [x] Implementar agente básico com LangGraph
+- [x] Integração com Google Gemini
+- [x] Sistema de ferramentas (tools)
+- [x] Memória persistente entre conversas
+- [ ] Implementar sistema de recuperação de documentos
+- [ ] Adicionar interface CLI mais robusta
+- [ ] Criar dashboard web
+- [ ] Adicionar suporte a múltiplos idiomas
+- [ ] Implementar sistema de plugins
+- [ ] Adicionar autenticação de usuários
+- [ ] Criar documentação com Sphinx
+- [ ] Adicionar testes de integração
+- [ ] Implementar sistema de logs estruturados
 
 ## 🐛 Relatando Bugs
 
@@ -367,6 +564,7 @@ Para reportar bugs, abra uma [issue](https://github.com/seu-usuario/ai-agent/iss
 3. **Comportamento esperado** vs **comportamento atual**
 4. **Ambiente** (OS, versão do Python, versão do uv)
 5. **Logs** ou mensagens de erro
+6. **Configuração** (API keys, banco de dados, etc.)
 
 ## 📄 Licença
 
@@ -376,6 +574,9 @@ Este projeto está licenciado sob a **MIT License**. Veja o arquivo [LICENSE](LI
 
 ## 🙏 Agradecimentos
 
+- [LangChain](https://python.langchain.com/) - Framework para aplicações LLM
+- [LangGraph](https://langchain-ai.github.io/langgraph/) - Criação de agentes com estado
+- [Google Gemini](https://ai.google.dev/) - Modelo de linguagem avançado
 - [uv](https://docs.astral.sh/uv/) - Gerenciador de dependências ultrarrápido
 - [Ruff](https://docs.astral.sh/ruff/) - Linter Python extremamente rápido
 - [Black](https://black.readthedocs.io/) - Formatador de código Python
