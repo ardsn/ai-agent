@@ -1,6 +1,6 @@
 # 🤖 AI Agent
 
-Um agente de IA para automação de tarefas desenvolvido em Python com gerenciamento moderno de dependências usando **uv**.
+Um agente de IA para automação de atendimento de clientes via Whatsapp, desenvolvido em Python com gerenciamento moderno de dependências usando **uv**.
 
 ## 📋 Índice
 
