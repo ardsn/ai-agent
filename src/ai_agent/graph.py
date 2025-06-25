@@ -1,3 +1,4 @@
+import os
 from langchain_core.tools import tool
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore
@@ -10,29 +11,34 @@ from langchain_huggingface import HuggingFaceEmbeddings
 import httpx
 
 
-
-db = SQLDatabase.from_uri("sqlite:///Chinook.db")
+db = SQLDatabase.from_uri("./db.sqlite3")
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-mpnet-base-v2"
 )
 vector_store = InMemoryVectorStore(embeddings)
-llm = init_chat_model("claude-3-5-sonnet-latest", model_provider="anthropic")
+llm = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
 memory = MemorySaver()
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
-# TODO: finalize system message
 system_message = """
-Você é um agente que atua como um atendende de um estabelecimento,
-capaz de responder a dúvidas de clientes, consultar dias e
-horários disponíveis e realizar agendamento de atendimentos
-quando necessário.
+Você é um atendende de um estabelecimento comercial, capaz
+de responder a dúvidas gerais de clientes, consultar
+dias e horários disponíveis, bem comorealizar agendamento
+de atendimentos quando necessário. Nunca agende um
+atendimento antes de ter verificado a disponibilidade
+de dia e horário.
 
-<Instruções para responder dúvidas sobre o estabelecimento>
+Para responde a dúvidas gerais sobre o estabelecimento,
+utilize a tool 'retrieve'.
 
-Use a tool 'retrieve' para buscar informações no banco vetorial.
+Quando for consultar dias e horários disponíveis,
+utilize as tools de SQL.
 
-<Instruções para consulta de dias e horários disponíveis>
+Quando for realizar um agendamento, use a tool
+'create_appointment'. 
 
+## Instruções para consulta de dias e horários disponíveis
+ 
 Para checar dias e horários disponíveis para agendamentos, interaja
 com o banco de dados SQL. Para fazer uma consulta, crie uma query
 sintaticamente correta em {dialect} e veja os resultados da query.
@@ -50,23 +56,21 @@ ao executar uma query, reescreva a query e tente novamente.
 Não faça nenhuma declaração DML (INSERT, UPDATE, DELETE, DROP etc.) no banco
 de dados.
 
-Para começar, você deve sempre olhar para as tabelas no banco de dados para
-ver o que você pode consultar. Não pule este passo.
+Antes de consultar algo no banco SQL, você deve sempre listar
+as tabelas disponíveis para decidir quais consultar. Em seguida
+deve consultar o schema das tabelas relevantes. Não pule
+este passo.
 
-Então você deve consultar o esquema das tabelas mais relevantes.
+## Instruções para realizar agendamento
 
-<Instruções para realizar agendamento>
-
-Quando for realizar um agendamento, use a tool 'create_appointment'. 
 Você deve ter como input do cliente o seu CPF, nome completo,
-nome do serviço, data e horário. Outro input é o CPF do profissional
-que irá realizar o serviço.
+nome do serviço, data e horário. Não peça ou exponha
+dados sensíveis que não sejam do cliente.
 """.format(
     dialect="SQLite",
-    top_k=5,
+    top_k=3,
 )
 
-# TODO: review this tool
 @tool(response_format="content_and_artifact")
 def retrieve(query: str) -> tuple[str, list[Document]]:
     """Retrieve information related to a query."""
@@ -77,7 +81,6 @@ def retrieve(query: str) -> tuple[str, list[Document]]:
     )
     return serialized, retrieved_docs
 
-# TODO: finalize this tool
 @tool(response_format="content_and_artifact")
 def create_appointment(
     customer_cpf: str,
@@ -88,14 +91,13 @@ def create_appointment(
     time: str
     ):
 
-    """Create an appointment for a customer."""
-    # TODO: register customer if not exists
-    # TODO: Make requests to get customer id, professional id and service id
+    """Create an appointment for a customer. The professional cpf
+    should be discovered by you.
+    """
     url = "http://localhost:8000/api/appointments"
     payload = {}
     response = httpx.post(url, json=payload)
     return response.json()
-
 
 tools = toolkit.get_tools() + [retrieve, create_appointment]
 
@@ -106,16 +108,13 @@ agent_executor = create_react_agent(
     checkpointer=memory
 )
 
-# Specify an ID for the thread
 config = {"configurable": {"thread_id": "abc123"}}
 
-# TODO: remove this
-question = "Which country's customers spent the most?"
-
-# TODO: update this
-for step in agent_executor.stream(
-    {"messages": [{"role": "user", "content": question}]},
-    stream_mode="values",
-    config=config,
-):
-    step["messages"][-1].pretty_print()
+while True:
+    user_input = input("Cliente: ")
+    for step in agent_executor.stream(
+        {"messages": [{"role": "user", "content": user_input}]},
+        stream_mode="values",
+        config=config,
+    ):
+        step["messages"][-1].pretty_print()
