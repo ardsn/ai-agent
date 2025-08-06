@@ -1,29 +1,30 @@
 import os
 from langchain_core.tools import tool
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
+# from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_community.utilities import SQLDatabase
-from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 import httpx
 
 
-db = SQLDatabase.from_uri("./db.sqlite3")
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2"
-)
-vector_store = InMemoryVectorStore(embeddings)
+db = SQLDatabase.from_uri("sqlite:////home/antonio/Documentos/repos/project-api/db.sqlite3")
+# embeddings = HuggingFaceEmbeddings(
+#     model_name="sentence-transformers/all-mpnet-base-v2"
+# )
+# vector_store = InMemoryVectorStore(embeddings)
 llm = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
 memory = MemorySaver()
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
+# TODO: finalize system message
 system_message = """
 Você é um atendende de um estabelecimento comercial, capaz
 de responder a dúvidas gerais de clientes, consultar
-dias e horários disponíveis, bem comorealizar agendamento
+dias e horários disponíveis, bem como realizar agendamento
 de atendimentos quando necessário. Nunca agende um
 atendimento antes de ter verificado a disponibilidade
 de dia e horário.
@@ -71,16 +72,19 @@ dados sensíveis que não sejam do cliente.
     top_k=3,
 )
 
+# TODO: review this tool
 @tool(response_format="content_and_artifact")
 def retrieve(query: str) -> tuple[str, list[Document]]:
     """Retrieve information related to a query."""
-    retrieved_docs: list[Document] = vector_store.similarity_search(query, k=2)
-    serialized: str = "\n\n".join(
-        (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
-        for doc in retrieved_docs
-    )
-    return serialized, retrieved_docs
+    # retrieved_docs: list[Document] = vector_store.similarity_search(query, k=2)
+    # serialized: str = "\n\n".join(
+    #     (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
+    #     for doc in retrieved_docs
+    # )
+    # return serialized, retrieved_docs
+    return "teste", []
 
+# TODO: finalize this tool
 @tool(response_format="content_and_artifact")
 def create_appointment(
     customer_cpf: str,
@@ -94,10 +98,13 @@ def create_appointment(
     """Create an appointment for a customer. The professional cpf
     should be discovered by you.
     """
-    url = "http://localhost:8000/api/appointments"
-    payload = {}
-    response = httpx.post(url, json=payload)
-    return response.json()
+    # TODO: register customer if not exists
+    # TODO: Make requests to get customer id, professional id and service id
+    # url = "http://localhost:8000/api/appointments"
+    # payload = {}
+    # response = httpx.post(url, json=payload)
+    # return response.json()
+    return "teste", []
 
 tools = toolkit.get_tools() + [retrieve, create_appointment]
 
@@ -108,10 +115,15 @@ agent_executor = create_react_agent(
     checkpointer=memory
 )
 
+# Specify an ID for the thread
 config = {"configurable": {"thread_id": "abc123"}}
 
+# TODO: remove this
+# question = "Which country's customers spent the most?"
+
 while True:
-    user_input = input("Cliente: ")
+    user_input = input("Você: ")
+    # TODO: update this
     for step in agent_executor.stream(
         {"messages": [{"role": "user", "content": user_input}]},
         stream_mode="values",
